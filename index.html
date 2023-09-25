@@ -71,6 +71,13 @@
     <script src="_static/togglebutton.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script src="_static/design-tabs.js"></script>
+    <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-RGCZCJ4ZZF"></script>
+    <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', 'G-RGCZCJ4ZZF');
+            </script>
     <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
 const thebe_selector = ".thebe,.cell"
 const thebe_selector_input = "pre"
@@ -80,6 +87,7 @@ const thebe_selector_output = ".output, .cell_output"
     <script>window.MathJax = {"tex": {"macros": {"N": "\\mathbb{N}", "floor": ["\\lfloor#1\\rfloor", 1], "bmat": ["\\left[\\begin{array}"], "emat": ["\\end{array}\\right]"]}}, "options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
+    <link rel="shortcut icon" href="https://assets.entelecheia.ai/favicon.png"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Usage" href="usage.html" />
@@ -418,16 +426,19 @@ document.write(`
 <a class="reference external" href="https://github.com/entelecheia/bis-fetcher/releases"><img alt="release-date-image" src="https://img.shields.io/github/release-date/entelecheia/bis-fetcher" /></a>
 <a class="reference external" href="https://github.com/entelecheia/bis-fetcher/blob/main/LICENSE"><img alt="license-image" src="https://img.shields.io/github/license/entelecheia/bis-fetcher" /></a>
 <a class="reference external" href="https://entelecheia.github.io/bis-fetcher"><img alt="jupyter-book-image" src="https://jupyterbook.org/en/stable/_images/badge.svg" /></a>
-<a class="reference external" href="https://codecov.io/gh/entelecheia/bis-fetcher"><img alt="codecov" src="https://codecov.io/gh/entelecheia/bis-fetcher/branch/main/graph/badge.svg?token=%5BREPLACE_ME%5D" /></a></p>
+<a class="reference external" href="https://codecov.io/gh/entelecheia/bis-fetcher"><img alt="codecov" src="https://codecov.io/gh/entelecheia/bis-fetcher/branch/main/graph/badge.svg?token=NfDlYO8LNh" /></a></p>
 <!-- Links: -->
 <!-- Links: -->
-<p>A python library to scrape the BIS website</p>
+<p>A Python library that scrapes the BIS website to download and extract text from central bank speeches.</p>
 <ul class="simple">
 <li><p>Documentation: <a class="reference external" href="https://entelecheia.github.io/bis-fetcher">https://entelecheia.github.io/bis-fetcher</a></p></li>
 <li><p>GitHub: <a class="github reference external" href="https://github.com/entelecheia/bis-fetcher">entelecheia/bis-fetcher</a></p></li>
 <li><p>PyPI: <a class="reference external" href="https://pypi.org/project/bis-fetcher">https://pypi.org/project/bis-fetcher</a></p></li>
 </ul>
-<p>A python library to scrape the BIS website</p>
+<p><code class="docutils literal notranslate"><span class="pre">bis-fetcher</span></code> is a Python library that programmatically scrapes the website of the Bank for International Settlements (BIS) to download PDF files of all available central bank speeches. It then extracts the text from these PDFs.</p>
+<p>The library allows easy access to a comprehensive dataset of central bank speeches over time. Researchers can use this data to perform quantitative analysis of central bank communication and track changes in tone, topics, and sentiment.</p>
+<p>The BIS hosts speeches by governors and other senior officials from central banks around the world. However, scraping the website manually is tedious. bis-fetcher automates the entire workflow from crawling the site to text extraction.</p>
+<p>It provides a simple API to get a list of available speeches, download the PDFs, and extract text. The text can be further processed or fed into models for analysis.</p>
 <section id="changelog">
 <h2>Changelog<a class="headerlink" href="#changelog" title="Permalink to this heading">#</a></h2>
 <p>See the <a class="reference external" href="https://github.com/entelecheia/bis-fetcher/blob/main/CHANGELOG.md">CHANGELOG</a> for more information.</p>
