@@ -54,16 +54,16 @@ def _parse_page_links(
         soup = BeautifulSoup(response.text, "html.parser")
 
         # Find the section with class 'section-category'
-        section = soup.find("section", class_="section-category")
+        table = soup.find("table", class_="documentList")
 
         # Find all articles within the section
-        articles = section.find_all("article")
+        tr = table.find_all("tr")
 
-        for article_no, article in enumerate(articles):
+        for tr_no, tr in enumerate(tr):
             # Extract and print article information
-            title = article.find("h2", class_="item-title").text
-            url = article.find("a")["href"]
-            if verbose and article_no % print_every == 0:
+            title = tr.find("div", class_="title").text
+            url = tr.find("a")["href"]
+            if verbose and tr_no % print_every == 0:
                 logger.info("Title: %s", title)
                 logger.info("URL: %s", url)
             link = {
