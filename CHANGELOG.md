@@ -1,5 +1,11 @@
 <!--next-version-placeholder-->
 
+## v0.4.0 (2023-11-10)
+
+### Feature
+
+* **pyproject.toml:** Add selenium dependency ([`6d59443`](https://github.com/entelecheia/bis-fetcher/commit/6d5944376efd010130a5e16189a80d1bc1916f0c))
+
 ## v0.3.0 (2023-11-10)
 
 ### Feature
