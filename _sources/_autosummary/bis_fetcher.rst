@@ -34,4 +34,5 @@
    :recursive:
 
    bis_fetcher.conf
+   bis_fetcher.fetcher
 
