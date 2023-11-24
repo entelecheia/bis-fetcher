@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.x
+          python-version: 3.9
 
       # install the source code
       - name: Install the source code
@@ -40,4 +40,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: book/_build/html
-          cname: 
+          cname:

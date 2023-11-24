@@ -4,12 +4,33 @@ import multiprocessing as mp
 import time
 from functools import partial
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
+import requests
 from hyfi.composer import BaseModel
 from hyfi.main import HyFI
 
+from .chromedriver import ChromeWebDriver
+
 logger = logging.getLogger(__name__)
+
+
+class Response(BaseModel):
+    text: str = ""
+    status_code: int = 0
+
+
+class By:
+    """Set of supported locator strategies."""
+
+    ID = "id"
+    XPATH = "xpath"
+    LINK_TEXT = "link text"
+    PARTIAL_LINK_TEXT = "partial link text"
+    NAME = "name"
+    TAG_NAME = "tag name"
+    CLASS_NAME = "class name"
+    CSS_SELECTOR = "css selector"
 
 
 class BaseFetcher(BaseModel):
@@ -20,22 +41,23 @@ class BaseFetcher(BaseModel):
     _config_name_: str = "base"
     _config_group_: str = "/fetcher"
 
-    search_url: str = ""
-    page_placeholder: str = "{page}"
-    keyword_placeholder: str = "{keyword}"
-    search_keywords: List[str] = []
-    start_urls: List[str] = []
-    start_page: Optional[int] = 1
-    max_num_pages: Optional[int] = 2
-    max_num_articles: Optional[int] = 10
-    output_dir: str = f"workspace/datasets{_config_group_}/{_config_name_}"
-    link_filename: str = "links.jsonl"
     article_filename: str = "articles.jsonl"
-    overwrite_existing: bool = False
-    key_field: str = "url"
+    base_url: str = ""
     delay_between_requests: float = 0.0
+    key_field: str = "url"
+    keyword_placeholder: str = "{keyword}"
+    link_filename: str = "links.jsonl"
+    max_num_articles: Optional[int] = 30
+    max_num_pages: Optional[int] = 2
     num_workers: int = 1
+    output_dir: str = f"workspace/datasets{_config_group_}/{_config_name_}"
+    overwrite_existing: bool = False
+    page_placeholder: str = "{page}"
     print_every: int = 10
+    search_keywords: List[str] = []
+    search_url: str = ""
+    start_page: Optional[int] = 1
+    start_urls: List[str] = []
     verbose: bool = True
 
     _links: List[dict] = []
@@ -50,6 +72,36 @@ class BaseFetcher(BaseModel):
     def fetch(self):
         self.fetch_links()
         self.fetch_articles()
+
+    def request(
+        self,
+        url: str,
+        use_selenium: bool = False,
+        wait_time: int = 10,
+        locator: Optional[Tuple[str, str]] = None,
+        params: dict = None,
+        **kwargs,
+    ) -> Response:
+        """Sends a GET request.
+
+        Args:
+            url (str): URL for the request
+            params (dict, optional): Dictionary, list of tuples or bytes to send
+                in the query string for the Request. Defaults to None.
+            **kwargs: Optional arguments that `request` takes.
+
+        Returns:
+            Response object containing response text and status code
+        """
+        if use_selenium:
+            driver = ChromeWebDriver().get(
+                url,
+                wait_time=wait_time,
+                locator=locator,
+            )
+            return Response(text=driver.text, status_code=driver.status_code)
+        res = requests.get(url, params=params, headers=self._headers, **kwargs)
+        return Response(text=res.text, status_code=res.status_code)
 
     @property
     def start_urls_encoded(self):
@@ -297,6 +349,7 @@ def crawl_links(
     """
 
     page = start_page
+    page_cnt = 0
     page_url = None
     links = []
     link_urls = link_urls or []
@@ -327,8 +380,9 @@ def crawl_links(
                 )
 
         page += 1
+        page_cnt += 1
 
-        if max_num_pages and page > max_num_pages:
+        if max_num_pages and page_cnt > max_num_pages:
             logger.info("Reached max number of pages, stopping...")
             break
         # Delay between requests

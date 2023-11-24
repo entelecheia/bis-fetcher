@@ -68,14 +68,14 @@ services:
       - "$HOST_CACHE_DIR:$CONTAINER_CACHE_DIR"
       - "$HOST_HF_HOME:$CONTAINER_HF_HOME"
       - "$HOST_SSH_DIR:$CONTAINER_SSH_DIR"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            # Reserves the specified GPU for the container
-            - driver: nvidia
-              device_ids: ["${CONTAINER_CUDA_DEVICE_ID}"]
-              capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         # Reserves the specified GPU for the container
+    #         - driver: nvidia
+    #           device_ids: ["${CONTAINER_CUDA_DEVICE_ID}"]
+    #           capabilities: [gpu]
 networks:
   default:
     # Sets the name of the default network and makes it external

@@ -1,5 +1,25 @@
 <!--next-version-placeholder-->
 
+## v0.6.0 (2023-11-24)
+
+### Feature
+
+* **dockerfile:** Add tesseract-ocr and libtesseract-dev to Dockerfile.base ([`b534f5c`](https://github.com/entelecheia/bis-fetcher/commit/b534f5c1cbf7f794ac774e1e88c040e08795e8fe))
+* **docker:** Add new env file with project id and other configurations ([`994f2e5`](https://github.com/entelecheia/bis-fetcher/commit/994f2e5fd4e89d18c662394928bf41c147753c1f))
+
+## v0.5.0 (2023-11-11)
+
+### Feature
+
+* **bis_fetcher:** Add author and timestamp to fetched data, add support for fetching pdfs ([`231de01`](https://github.com/entelecheia/bis-fetcher/commit/231de01dd819b6ecb480ec324fb84c13935f84ed))
+* **bis_fetcher:** Added use_selenium flag into request function ([`f6a1727`](https://github.com/entelecheia/bis-fetcher/commit/f6a1727f5105d348d900bc4856209291514ffd5b))
+* **bis_fetcher:** Use base_url for article links, add use_selenium field and change _config_name_ value to "bis". ([`a9e3655`](https://github.com/entelecheia/bis-fetcher/commit/a9e3655aea5a8e848c55c86263bb77e8455d1f37))
+* **bis_fetcher:** Add base_url to BaseFetcher ([`3575281`](https://github.com/entelecheia/bis-fetcher/commit/35752816ee9fcab23112a350be007a47043f7a32))
+* **fetcher:** Replace selenium webdriver with chromedriver, introduce locator strategies and Response class in requests ([`b938086`](https://github.com/entelecheia/bis-fetcher/commit/b938086b2b409dcea18760b4e94dc72baaf199c7))
+* **fetcher:** Add wait_time parameter and locator capability to ChromeWebDriver ([`369cb21`](https://github.com/entelecheia/bis-fetcher/commit/369cb215badb1041d833835bfc04c813d411e9fc))
+* **bis_fetcher:** Add ChromeWebDriver class for fetching HTTP responses using Selenium ([`568c5cc`](https://github.com/entelecheia/bis-fetcher/commit/568c5ccdd64384240a2abc7afd6368e486044cd3))
+* **bis_fetcher:** Add request method and driver method ([`22803da`](https://github.com/entelecheia/bis-fetcher/commit/22803dac57910e1fed4d6cc483098190702ac782))
+
 ## v0.4.0 (2023-11-10)
 
 ### Feature
