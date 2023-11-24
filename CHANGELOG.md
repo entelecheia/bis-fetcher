@@ -1,5 +1,12 @@
 <!--next-version-placeholder-->
 
+## v0.6.0 (2023-11-24)
+
+### Feature
+
+* **dockerfile:** Add tesseract-ocr and libtesseract-dev to Dockerfile.base ([`b534f5c`](https://github.com/entelecheia/bis-fetcher/commit/b534f5c1cbf7f794ac774e1e88c040e08795e8fe))
+* **docker:** Add new env file with project id and other configurations ([`994f2e5`](https://github.com/entelecheia/bis-fetcher/commit/994f2e5fd4e89d18c662394928bf41c147753c1f))
+
 ## v0.5.0 (2023-11-11)
 
 ### Feature
