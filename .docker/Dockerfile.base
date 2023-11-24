@@ -19,6 +19,7 @@ RUN apt-get update --fix-missing \
     && apt-get install -y curl wget jq sudo gosu git git-lfs zsh unzip \
     python3-launchpadlib software-properties-common build-essential \
     locales locales-all fontconfig fonts-nanum \
+    tesseract-ocr libtesseract-dev \
     ffmpeg libsm6 libxext6 \
     tzdata openssh-server \
     && add-apt-repository ppa:deadsnakes/ppa -y \
