@@ -236,20 +236,28 @@ class BaseFetcher(BaseModel):
         return links
 
     def _fetch_articles(self, parse_article_func: Callable):
-        num_workers = min(self.num_workers, len(self.links))
         article_urls = self._done_article_urls()
+        # Apply max_num_articles once per run, before the links are split across workers.
+        links = [
+            link
+            for link in self.links
+            if self.overwrite_existing or link["url"] not in article_urls
+        ]
+        if self.max_num_articles is not None:
+            links = links[: max(self.max_num_articles, 0)]  # a negative limit fetches nothing
+        num_workers = max(min(self.num_workers, len(links)), 1)
         fetch_articles_func = partial(
             scrape_article_text,
             parse_article_func=parse_article_func,
             article_urls=article_urls,
             overwrite_existing=self.overwrite_existing,
             article_filepath=self.article_filepath_tmp,
-            max_num_articles=self.max_num_articles,
+            max_num_articles=None,
             delay_between_requests=self.delay_between_requests,
             print_every=self.print_every,
             verbose=self.verbose,
         )
-        if articles := self._fetch_articles_mp(num_workers, fetch_articles_func):
+        if articles := self._fetch_articles_mp(num_workers, fetch_articles_func, links):
             self.save_articles(articles)
         else:
             logger.info("No more articles found")
@@ -283,12 +291,13 @@ class BaseFetcher(BaseModel):
         self,
         num_workers: int,
         batch_func: Callable,
+        links: list[dict],
     ) -> list[dict]:
         articles = []
-        if len(self.links) < 1:
+        if len(links) < 1:
             return articles
-        batch_size = len(self.links) // num_workers
-        batches = [self.links[i : i + batch_size] for i in range(0, len(self.links), batch_size)]
+        batch_size = len(links) // num_workers
+        batches = [links[i : i + batch_size] for i in range(0, len(links), batch_size)]
         with mp.Pool(num_workers) as pool:
             results = pool.map(batch_func, batches)
         for result in results:
