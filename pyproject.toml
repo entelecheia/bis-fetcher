@@ -1,6 +1,6 @@
 [project]
 name = "bis-fetcher"
-version = "0.6.0"
+version = "1.0.0"
 description = "A python library to scrape the BIS website"
 authors = [{ name = "Young Joon Lee", email = "entelecheia@hotmail.com" }]
 license = "MIT"
