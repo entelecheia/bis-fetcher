@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 from pdf2image import convert_from_path
 from PyPDF2 import PdfReader
 
-from .base import BaseFetcher, By
+from .base import BaseFetcher, By, PageFetchError
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,10 @@ class BisFetcher(BaseFetcher):
                 use_selenium=True,
                 locator=self.link_locator,
             )
+        except Exception as e:
+            # A failed fetch is not an empty page: let the crawl report it.
+            raise PageFetchError(page_url) from e
+        try:
             # Check if page exists (status code 200) or not (status code 404)
             if response.status_code == 404:
                 logger.info("Page [%s] does not exist, stopping...", page_url)
@@ -99,7 +103,7 @@ class BisFetcher(BaseFetcher):
     def _parse_article_text(self, url: str) -> dict | None:
         """Parse the article text from the given divs."""
         try:
-            if url.endswith(".pdf"):
+            if PurePosixPath(urlparse(url).path).suffix.lower() == ".pdf":
                 pdf_url = url
             else:
                 response = self.request(url)
@@ -133,15 +137,15 @@ class BisFetcher(BaseFetcher):
             pdf_path.write_bytes(response.content)
 
             pdf_reader = PdfReader(BytesIO(response.content))
-            text = ""
-            for page_num in range(len(pdf_reader.pages)):
-                text += pdf_reader.pages[page_num].extract_text()
+            text = "".join(page.extract_text() or "" for page in pdf_reader.pages)
 
+            # No text layer (scanned) or glyph-code garbage: fall back to OCR.
             page_texts = ["/i255", "/0", "/1", "/2"]
-            if any(page_text in text for page_text in page_texts):
+            if not text.strip() or any(page_text in text for page_text in page_texts):
                 text = self.extract_text_from_image_pdf(pdf_path)
-            else:
-                return text
+            if not text or not text.strip():
+                logger.error("No text extracted from PDF, even with OCR: %s", url)
+                return None
             return text
 
         except Exception as e:

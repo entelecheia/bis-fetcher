@@ -104,6 +104,8 @@ class BaseFetcher(BaseModel):
                 wait_time=wait_time,
                 locator=locator,
             )
+            if driver.error is not None:
+                raise driver.error
             return Response(text=driver.text, status_code=driver.status_code)
         timeout = kwargs.pop("timeout", self.request_timeout)
         res = requests.get(url, params=params, headers=self._headers, timeout=timeout, **kwargs)
@@ -320,6 +322,10 @@ class BaseFetcher(BaseModel):
         raise NotImplementedError("Parsing article text is not implemented in base class")
 
 
+class PageFetchError(Exception):
+    """A listing page could not be fetched (as opposed to being empty)."""
+
+
 def crawl_links(
     start_url: str,
     parse_page_func: Callable,
@@ -355,7 +361,12 @@ def crawl_links(
         # get next page url
         page_url = next_page_func(start_url, page_url, page)
         # Parse page
-        page_links = parse_page_func(page_url)
+        try:
+            page_links = parse_page_func(page_url)
+        except PageFetchError as e:
+            # Keep the links fetched so far; the failed page is reported, not treated as empty.
+            logger.error("Failed to fetch page %s, stopping: %s", page_url, e.__cause__ or e)
+            break
 
         # Check if page_links is None
         if page_links is None:
