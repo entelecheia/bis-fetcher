@@ -1,15 +1,16 @@
 """Base Fetcher"""
+
 import logging
 import multiprocessing as mp
 import time
+from collections.abc import Callable
 from functools import partial
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
 
 import requests
-from hyfi.composer import BaseModel
-from hyfi.main import HyFI
+from pydantic import BaseModel, ConfigDict
 
+from .. import jsonl
 from .chromedriver import ChromeWebDriver
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,8 @@ class BaseFetcher(BaseModel):
     Base Fetcher
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
     _config_name_: str = "base"
     _config_group_: str = "/fetcher"
 
@@ -47,21 +50,21 @@ class BaseFetcher(BaseModel):
     key_field: str = "url"
     keyword_placeholder: str = "{keyword}"
     link_filename: str = "links.jsonl"
-    max_num_articles: Optional[int] = 30
-    max_num_pages: Optional[int] = 2
+    max_num_articles: int | None = 30
+    max_num_pages: int | None = 2
     num_workers: int = 1
     output_dir: str = f"workspace/datasets{_config_group_}/{_config_name_}"
     overwrite_existing: bool = False
     page_placeholder: str = "{page}"
     print_every: int = 10
-    search_keywords: List[str] = []
+    search_keywords: list[str] = []
     search_url: str = ""
-    start_page: Optional[int] = 1
-    start_urls: List[str] = []
+    start_page: int | None = 1
+    start_urls: list[str] = []
     verbose: bool = True
 
-    _links: List[dict] = []
-    _articles: List[dict] = []
+    _links: list[dict] = []
+    _articles: list[dict] = []
     _headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
     }
@@ -78,8 +81,8 @@ class BaseFetcher(BaseModel):
         url: str,
         use_selenium: bool = False,
         wait_time: int = 10,
-        locator: Optional[Tuple[str, str]] = None,
-        params: dict = None,
+        locator: tuple[str, str] | None = None,
+        params: dict | None = None,
         **kwargs,
     ) -> Response:
         """Sends a GET request.
@@ -100,7 +103,7 @@ class BaseFetcher(BaseModel):
                 locator=locator,
             )
             return Response(text=driver.text, status_code=driver.status_code)
-        res = requests.get(url, params=params, headers=self._headers, **kwargs)
+        res = requests.get(url, params=params, headers=self._headers, **kwargs)  # noqa: S113
         return Response(text=res.text, status_code=res.status_code)
 
     @property
@@ -110,9 +113,7 @@ class BaseFetcher(BaseModel):
         if self.keyword_placeholder in self.search_url:
             # Generate start URLs by replacing keyword placeholder with encoded keywords
             start_urls = [
-                self.search_url.replace(
-                    self.keyword_placeholder, self.encode_keyword(keyword)
-                )
+                self.search_url.replace(self.keyword_placeholder, self.encode_keyword(keyword))
                 for keyword in self.search_keywords
             ]
         else:
@@ -154,14 +155,14 @@ class BaseFetcher(BaseModel):
         _path.parent.mkdir(parents=True, exist_ok=True)
         return str(_path)
 
-    def _load_links(self) -> List[dict]:
+    def _load_links(self) -> list[dict]:
         if Path(self.link_filepath).exists():
-            self._links = HyFI.load_jsonl(self.link_filepath)
+            self._links = jsonl.load_jsonl(self.link_filepath)
         return self._links
 
-    def _load_articles(self) -> List[dict]:
+    def _load_articles(self) -> list[dict]:
         if Path(self.article_filepath).exists():
-            self._articles = HyFI.load_jsonl(self.article_filepath)
+            self._articles = jsonl.load_jsonl(self.article_filepath)
         return self._articles
 
     def fetch_links(self):
@@ -205,25 +206,23 @@ class BaseFetcher(BaseModel):
         else:
             logger.info("No more links found")
 
-    def save_links(self, links: List[dict]):
+    def save_links(self, links: list[dict]):
         self._links.extend(links)
         original_len = len(self._links)
-        self._links = HyFI.remove_duplicates_from_list_of_dicts(
-            self._links, key=self.key_field
-        )
+        self._links = jsonl.remove_duplicates_from_list_of_dicts(self._links, key=self.key_field)
         logger.info(
             "Removed %s duplicate links from %s links",
             original_len - len(self._links),
             original_len,
         )
-        HyFI.save_jsonl(self._links, self.link_filepath)
+        jsonl.save_jsonl(self._links, self.link_filepath)
         logger.info("Saved %s links to %s", len(self._links), self.link_filepath)
 
     def _fetch_links_mp(
         self,
         num_workers: int,
         batch_func: Callable,
-    ) -> List[dict]:
+    ) -> list[dict]:
         with mp.Pool(num_workers) as pool:
             results = pool.map(batch_func, self.start_urls_encoded)
         links = []
@@ -250,10 +249,10 @@ class BaseFetcher(BaseModel):
         else:
             logger.info("No more articles found")
 
-    def save_articles(self, articles: List[dict]):
+    def save_articles(self, articles: list[dict]):
         self._articles.extend(articles)
         original_len = len(self._articles)
-        self._articles = HyFI.remove_duplicates_from_list_of_dicts(
+        self._articles = jsonl.remove_duplicates_from_list_of_dicts(
             self._articles, key=self.key_field
         )
         logger.info(
@@ -261,7 +260,7 @@ class BaseFetcher(BaseModel):
             original_len - len(self._articles),
             original_len,
         )
-        HyFI.save_jsonl(self._articles, self.article_filepath)
+        jsonl.save_jsonl(self._articles, self.article_filepath)
         logger.info(
             "Saved %s articles to %s",
             len(self._articles),
@@ -272,15 +271,12 @@ class BaseFetcher(BaseModel):
         self,
         num_workers: int,
         batch_func: Callable,
-    ) -> List[dict]:
+    ) -> list[dict]:
         articles = []
         if len(self.links) < 1:
             return articles
         batch_size = len(self.links) // num_workers
-        batches = [
-            self.links[i : i + batch_size]
-            for i in range(0, len(self.links), batch_size)
-        ]
+        batches = [self.links[i : i + batch_size] for i in range(0, len(self.links), batch_size)]
         with mp.Pool(num_workers) as pool:
             results = pool.map(batch_func, batches)
         for result in results:
@@ -290,10 +286,10 @@ class BaseFetcher(BaseModel):
     def _next_page_func(
         self,
         start_url: str,
-        current_url: Optional[str],
+        current_url: str | None,
         page: int,
-        page_placeholder: Optional[str],
-    ) -> Optional[str]:
+        page_placeholder: str | None,
+    ) -> str | None:
         if page_placeholder and page_placeholder in start_url:
             # Return next page url by replacing placeholder with page number
             page_url = start_url.replace(page_placeholder, str(page))
@@ -310,7 +306,7 @@ class BaseFetcher(BaseModel):
         page_url: str,
         print_every: int = 10,
         verbose: bool = False,
-    ) -> Optional[List[dict]]:
+    ) -> list[dict] | None:
         """Get the links from the given page."""
 
         # TODO: Parse the page and extract all links
@@ -318,9 +314,7 @@ class BaseFetcher(BaseModel):
 
     def _parse_article_text(self, url: str) -> dict:
         # TODO: Scrape the article page and extract the text
-        raise NotImplementedError(
-            "Parsing article text is not implemented in base class"
-        )
+        raise NotImplementedError("Parsing article text is not implemented in base class")
 
 
 def crawl_links(
@@ -328,11 +322,11 @@ def crawl_links(
     parse_page_func: Callable,
     next_page_func: Callable,
     start_page: int = 1,
-    max_num_pages: Optional[int] = 2,
-    link_urls: Optional[List[str]] = None,
-    link_filepath: Optional[str] = None,
+    max_num_pages: int | None = 2,
+    link_urls: list[str] | None = None,
+    link_filepath: str | None = None,
     delay_between_requests: float = 0.0,
-) -> List[dict]:
+) -> list[dict]:
     """Crawl links for article links with the given keyword.
 
     Args:
@@ -372,7 +366,7 @@ def crawl_links(
                 links.append(link)
                 link_urls.append(link["url"])
                 if link_filepath:
-                    HyFI.append_to_jsonl(link, link_filepath)
+                    jsonl.append_to_jsonl(link, link_filepath)
             else:
                 logger.info(
                     "Link %s already exists, skipping...",
@@ -396,16 +390,16 @@ def crawl_links(
 
 
 def scrape_article_text(
-    links: List[dict],
+    links: list[dict],
     parse_article_func: Callable,
-    article_urls: Optional[List[dict]] = None,
+    article_urls: list[dict] | None = None,
     overwrite_existing: bool = False,
-    max_num_articles: Optional[int] = 10,
-    article_filepath: Optional[str] = None,
+    max_num_articles: int | None = 10,
+    article_filepath: str | None = None,
     delay_between_requests: float = 0.0,
     print_every: int = 10,
     verbose: bool = False,
-) -> List[dict]:
+) -> list[dict]:
     """Scrape the article text from the given links.
 
     Args:
@@ -447,7 +441,7 @@ def scrape_article_text(
         articles.append(article)
         article_urls.append(url)
         if article_filepath:
-            HyFI.append_to_jsonl(article, article_filepath)
+            jsonl.append_to_jsonl(article, article_filepath)
         if (verbose and (i + 1) % print_every == 0) or delay_between_requests > 0:
             logger.info("Article [%s](%s) scraped", title, url)
 

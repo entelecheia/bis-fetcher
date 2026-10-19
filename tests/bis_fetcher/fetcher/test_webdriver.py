@@ -1,4 +1,5 @@
 import pytest
+
 from bis_fetcher.fetcher.chromedriver import ChromeWebDriver
 
 # Constants for tests

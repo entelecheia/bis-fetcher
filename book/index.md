@@ -5,13 +5,10 @@
 [![release-date-image]][release-url]
 [![license-image]][license-url]
 [![jupyter-book-image]][docs-url]
-[![codecov][codecov-image]][codecov-url]
 
 <!-- Links: -->
 [hyperfast python template]: https://github.com/entelecheia/hyperfast-python-template
 
-[codecov-image]: https://codecov.io/gh/entelecheia/bis-fetcher/branch/main/graph/badge.svg?token=NfDlYO8LNh
-[codecov-url]: https://codecov.io/gh/entelecheia/bis-fetcher
 [pypi-image]: https://img.shields.io/pypi/v/bis-fetcher
 [license-image]: https://img.shields.io/github/license/entelecheia/bis-fetcher
 [license-url]: https://github.com/entelecheia/bis-fetcher/blob/main/LICENSE

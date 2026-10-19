@@ -31,3 +31,7 @@ htmlcov/
 pytest-coverage.*
 
 workspace/
+
+# uv
+.venv/
+.ruff_cache/
