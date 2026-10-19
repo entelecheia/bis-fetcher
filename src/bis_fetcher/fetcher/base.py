@@ -99,7 +99,7 @@ class BaseFetcher(BaseModel):
             Response object containing response text and status code
         """
         if use_selenium:
-            driver = ChromeWebDriver().get(
+            driver = ChromeWebDriver(request_timeout=self.request_timeout).get(
                 url,
                 wait_time=wait_time,
                 locator=locator,

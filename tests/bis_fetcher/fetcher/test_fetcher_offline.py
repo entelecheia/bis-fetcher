@@ -106,3 +106,18 @@ def test_failed_pdf_download_is_retried_on_the_next_run(monkeypatch, tmp_path):
     articles = run()
     assert [a["url"] for a in articles] == [url]
     assert articles[0]["text"]
+
+
+def test_selenium_status_request_uses_fetcher_timeout(monkeypatch):
+    timeouts = []
+
+    def stalled_get(url, **kwargs):
+        timeouts.append(kwargs.get("timeout"))
+        raise requests.Timeout("read timed out")
+
+    monkeypatch.setattr(requests, "get", stalled_get)
+    response = BisFetcher(request_timeout=(1.0, 2.0)).request(
+        "https://www.bis.org/cbspeeches/index.htm", use_selenium=True
+    )
+    assert response.status_code == 0
+    assert timeouts == [(1.0, 2.0)]
