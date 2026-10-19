@@ -285,3 +285,8 @@ def test_article_limit_applies_per_run_not_per_worker(monkeypatch, tmp_path):
     fetcher._fetch_articles(parse)
     assert fetched == ["u1"]
     assert [a["url"] for a in fetcher._articles] == ["u0", "u1"]
+
+    # A negative limit fetches nothing, as before (not Python's negative slice).
+    fetcher.max_num_articles = -1
+    fetcher._fetch_articles(parse)
+    assert fetched == ["u1"]

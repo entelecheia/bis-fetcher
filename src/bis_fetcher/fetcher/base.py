@@ -244,7 +244,7 @@ class BaseFetcher(BaseModel):
             if self.overwrite_existing or link["url"] not in article_urls
         ]
         if self.max_num_articles is not None:
-            links = links[: self.max_num_articles]
+            links = links[: max(self.max_num_articles, 0)]  # a negative limit fetches nothing
         num_workers = max(min(self.num_workers, len(links)), 1)
         fetch_articles_func = partial(
             scrape_article_text,
