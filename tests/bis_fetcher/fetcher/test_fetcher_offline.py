@@ -253,3 +253,35 @@ def test_article_limit_counts_fetches_not_skipped_links():
     done = ["u0", "u1", "u2"]
     articles = scrape_article_text(links, parse, article_urls=done, max_num_articles=1)
     assert fetched == ["u3"] and [a["url"] for a in articles] == ["u3"]
+
+
+def test_article_limit_applies_per_run_not_per_worker(monkeypatch, tmp_path):
+    # #97: each worker batch got the full max_num_articles.
+    from bis_fetcher.fetcher import base
+
+    class SequentialPool:
+        def __init__(self, n):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def map(self, func, items):
+            return [func(item) for item in items]
+
+    monkeypatch.setattr(base.mp, "Pool", SequentialPool)
+    fetched = []
+
+    def parse(url):
+        fetched.append(url)
+        return {"text": "x"}
+
+    fetcher = BisFetcher(output_dir=str(tmp_path), num_workers=2, max_num_articles=1)
+    fetcher._links = [{"url": f"u{i}", "title": "t"} for i in range(4)]
+    fetcher._articles = [{"url": "u0", "text": "done"}]
+    fetcher._fetch_articles(parse)
+    assert fetched == ["u1"]
+    assert [a["url"] for a in fetcher._articles] == ["u0", "u1"]
