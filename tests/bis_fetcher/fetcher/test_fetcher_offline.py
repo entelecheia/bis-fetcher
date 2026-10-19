@@ -4,7 +4,8 @@ from pathlib import Path
 
 import requests
 
-from bis_fetcher.fetcher.base import crawl_links
+from bis_fetcher import jsonl
+from bis_fetcher.fetcher.base import crawl_links, scrape_article_text
 from bis_fetcher.fetcher.bis import BisFetcher
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
@@ -74,3 +75,34 @@ def test_pdf_is_saved_under_output_dir(monkeypatch, tmp_path):
     assert (out / "r261019a.pdf").read_bytes() == pdf
     assert fetcher.download_pdf("https://www.bis.org/review/..") is None
     assert [p.name for p in tmp_path.rglob("*") if p.is_file()] == ["r261019a.pdf"]
+
+
+def test_failed_pdf_download_is_retried_on_the_next_run(monkeypatch, tmp_path):
+    class PdfResponse:
+        content = (FIXTURES / "speech.pdf").read_bytes()
+
+        def raise_for_status(self):
+            pass
+
+    def timed_out(url, **kwargs):
+        raise requests.Timeout("read timed out")
+
+    url = "https://www.bis.org/review/r261019a.pdf"
+    links = [{"url": url, "title": "Speech"}]
+    saved = tmp_path / "articles.jsonl"
+    fetcher = BisFetcher(output_dir=str(tmp_path))
+
+    def run():
+        done = [a["url"] for a in jsonl.load_jsonl(str(saved))] if saved.exists() else []
+        return scrape_article_text(
+            links, fetcher._parse_article_text, article_urls=done, article_filepath=str(saved)
+        )
+
+    monkeypatch.setattr(requests, "get", timed_out)
+    assert run() == []
+    assert not saved.exists()
+
+    monkeypatch.setattr(requests, "get", lambda url, **kwargs: PdfResponse())
+    articles = run()
+    assert [a["url"] for a in articles] == [url]
+    assert articles[0]["text"]

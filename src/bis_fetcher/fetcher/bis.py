@@ -100,19 +100,17 @@ class BisFetcher(BaseFetcher):
         """Parse the article text from the given divs."""
         try:
             if url.endswith(".pdf"):
-                text = self.download_pdf(url)
-                return {
-                    "pdf_url": url,
-                    "text": text,
-                }
-
-            response = self.request(url)
-            soup = BeautifulSoup(response.text, "html.parser")
-            pdf_div = soup.find("div", class_="pdftxt")
-            pdf = pdf_div.find("a", class_="pdftitle_link")["href"]
-            pdf_url = self.base_url + pdf
+                pdf_url = url
+            else:
+                response = self.request(url)
+                soup = BeautifulSoup(response.text, "html.parser")
+                pdf_div = soup.find("div", class_="pdftxt")
+                pdf = pdf_div.find("a", class_="pdftitle_link")["href"]
+                pdf_url = self.base_url + pdf
             text = self.download_pdf(pdf_url)
-
+            if text is None:
+                # Download failed: save nothing so the next run retries this article.
+                return None
             return {"pdf_url": pdf_url, "text": text}
 
         except Exception as e:
