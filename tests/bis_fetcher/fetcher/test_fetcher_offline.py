@@ -1,8 +1,12 @@
 """Offline regression tests for fetcher request handling."""
 
+from pathlib import Path
+
 import requests
 
 from bis_fetcher.fetcher.bis import BisFetcher
+
+FIXTURES = Path(__file__).parent.parent / "fixtures"
 
 
 def test_timeout_skips_article_instead_of_failing(monkeypatch):
@@ -18,3 +22,20 @@ def test_timeout_skips_article_instead_of_failing(monkeypatch):
     assert fetcher._parse_article_text("https://www.bis.org/review/r261019a.htm") is None
     assert fetcher.download_pdf("https://www.bis.org/review/r261019a.pdf") is None
     assert timeouts == [(1.0, 2.0), (1.0, 2.0)]
+
+
+def test_direct_pdf_link_is_downloaded(monkeypatch, tmp_path):
+    class PdfResponse:
+        content = (FIXTURES / "speech.pdf").read_bytes()
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(requests, "get", lambda url, **kwargs: PdfResponse())
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "workspace").mkdir()  # download_pdf writes here
+    url = "https://www.bis.org/review/r261019a.pdf"
+    article = BisFetcher()._parse_article_text(url)
+    assert article is not None
+    assert article["pdf_url"] == url
+    assert article["text"]

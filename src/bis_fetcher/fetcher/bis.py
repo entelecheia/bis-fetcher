@@ -98,7 +98,7 @@ class BisFetcher(BaseFetcher):
         """Parse the article text from the given divs."""
         try:
             if url.endswith(".pdf"):
-                text = self.download_pdf()
+                text = self.download_pdf(url)
                 return {
                     "pdf_url": url,
                     "text": text,
