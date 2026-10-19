@@ -33,10 +33,8 @@ def test_direct_pdf_link_is_downloaded(monkeypatch, tmp_path):
             pass
 
     monkeypatch.setattr(requests, "get", lambda url, **kwargs: PdfResponse())
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "workspace").mkdir()  # download_pdf writes here
     url = "https://www.bis.org/review/r261019a.pdf"
-    article = BisFetcher()._parse_article_text(url)
+    article = BisFetcher(output_dir=str(tmp_path))._parse_article_text(url)
     assert article is not None
     assert article["pdf_url"] == url
     assert article["text"]
@@ -57,3 +55,22 @@ def test_max_num_pages_visits_exactly_n_pages():
     )
     assert visited == ["listing?page=1", "listing?page=2"]
     assert len(links) == 2
+
+
+def test_pdf_is_saved_under_output_dir(monkeypatch, tmp_path):
+    pdf = (FIXTURES / "speech.pdf").read_bytes()
+
+    class PdfResponse:
+        content = pdf
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(requests, "get", lambda url, **kwargs: PdfResponse())
+    monkeypatch.chdir(tmp_path)  # no workspace/ here
+    out = tmp_path / "out" / "bis"
+    fetcher = BisFetcher(output_dir=str(out))
+    assert fetcher.download_pdf("https://www.bis.org/review/r261019a.pdf?x=1")
+    assert (out / "r261019a.pdf").read_bytes() == pdf
+    assert fetcher.download_pdf("https://www.bis.org/review/..") is None
+    assert [p.name for p in tmp_path.rglob("*") if p.is_file()] == ["r261019a.pdf"]
