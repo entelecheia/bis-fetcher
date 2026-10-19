@@ -1,5 +1,38 @@
 <!--next-version-placeholder-->
 
+## v1.0.1 (2026-10-19)
+
+### Bug Fixes
+
+- Apply max_num_articles once per run, before splitting links across workers
+  ([#98](https://github.com/entelecheia/bis-fetcher/pull/98),
+  [`7a6ffe2`](https://github.com/entelecheia/bis-fetcher/commit/7a6ffe267876012814b35ed42cc36e7bf05d2dac))
+
+- Count fetches, not link positions, against max_num_articles
+  ([#96](https://github.com/entelecheia/bis-fetcher/pull/96),
+  [`a63e53c`](https://github.com/entelecheia/bis-fetcher/commit/a63e53c79cac5979514e7f240c9b1eaebd331ee6))
+
+- Keep OCR output as a list when checking it for text
+  ([#96](https://github.com/entelecheia/bis-fetcher/pull/96),
+  [`a63e53c`](https://github.com/entelecheia/bis-fetcher/commit/a63e53c79cac5979514e7f240c9b1eaebd331ee6))
+
+- OCR text-less PDFs, query-string PDF links, report failed listing pages
+  ([#96](https://github.com/entelecheia/bis-fetcher/pull/96),
+  [`a63e53c`](https://github.com/entelecheia/bis-fetcher/commit/a63e53c79cac5979514e7f240c9b1eaebd331ee6))
+
+- Report HTTP errors other than 404 on listing pages as failed fetches
+  ([#96](https://github.com/entelecheia/bis-fetcher/pull/96),
+  [`a63e53c`](https://github.com/entelecheia/bis-fetcher/commit/a63e53c79cac5979514e7f240c9b1eaebd331ee6))
+
+- Retry articles saved with blank text by earlier runs
+  ([#96](https://github.com/entelecheia/bis-fetcher/pull/96),
+  [`a63e53c`](https://github.com/entelecheia/bis-fetcher/commit/a63e53c79cac5979514e7f240c9b1eaebd331ee6))
+
+- Treat a negative max_num_articles as zero, not as a slice from the end
+  ([#98](https://github.com/entelecheia/bis-fetcher/pull/98),
+  [`7a6ffe2`](https://github.com/entelecheia/bis-fetcher/commit/7a6ffe267876012814b35ed42cc36e7bf05d2dac))
+
+
 ## v1.0.0 (2026-10-19)
 
 ### Bug Fixes
