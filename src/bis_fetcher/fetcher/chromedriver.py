@@ -90,6 +90,7 @@ class ChromeWebDriver:
         self.text = ""
         self.title = ""
         self.status_code = 0
+        self.error: Exception | None = None
         if url is not None:
             self.get(url)
 
@@ -127,6 +128,9 @@ class ChromeWebDriver:
         """
         self.url = url  # set the URL to fetch
         wait_time = wait_time or self.wait_time
+        self.error = None
+        self.text = ""
+        self.title = ""
         try:
             self._get(
                 url,
@@ -136,6 +140,7 @@ class ChromeWebDriver:
         except Exception as e:
             logger.error("Error while fetching the url: %s", url)
             logger.error(e)
+            self.error = e
             self.close()
         return self
 
@@ -146,6 +151,9 @@ class ChromeWebDriver:
         locator: tuple[str, str] | None = None,
     ):
         self.status_code = requests.get(url, timeout=self.request_timeout).status_code
+        if self.status_code >= 400:
+            # An error page has no listing to wait for; the caller checks status_code.
+            return
         self.driver.get(url)  # get the requested URL
         self.driver.refresh()
         if wait_time > 0 and locator is not None:

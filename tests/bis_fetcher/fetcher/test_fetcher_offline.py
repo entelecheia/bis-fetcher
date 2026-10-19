@@ -2,9 +2,11 @@
 
 from pathlib import Path
 
+import pytest
 import requests
 
 from bis_fetcher import jsonl
+from bis_fetcher.fetcher import bis
 from bis_fetcher.fetcher.base import crawl_links, scrape_article_text
 from bis_fetcher.fetcher.bis import BisFetcher
 
@@ -116,10 +118,10 @@ def test_selenium_status_request_uses_fetcher_timeout(monkeypatch):
         raise requests.Timeout("read timed out")
 
     monkeypatch.setattr(requests, "get", stalled_get)
-    response = BisFetcher(request_timeout=(1.0, 2.0)).request(
-        "https://www.bis.org/cbspeeches/index.htm", use_selenium=True
-    )
-    assert response.status_code == 0
+    with pytest.raises(requests.Timeout):
+        BisFetcher(request_timeout=(1.0, 2.0)).request(
+            "https://www.bis.org/cbspeeches/index.htm", use_selenium=True
+        )
     assert timeouts == [(1.0, 2.0)]
 
 
@@ -135,3 +137,119 @@ def test_pdf_named_like_a_record_file_does_not_overwrite_it(monkeypatch, tmp_pat
     records.write_text('{"url": "https://www.bis.org/review/r1.htm"}\n')
     BisFetcher(output_dir=str(tmp_path)).download_pdf("https://www.bis.org/x/articles.jsonl")
     assert records.read_text() == '{"url": "https://www.bis.org/review/r1.htm"}\n'
+
+
+class _PdfResponse:
+    content = (FIXTURES / "speech.pdf").read_bytes()
+
+    def raise_for_status(self):
+        pass
+
+
+def test_pdf_without_text_layer_falls_back_to_ocr(monkeypatch, tmp_path):
+    class NoTextPage:
+        def extract_text(self):
+            return ""
+
+    monkeypatch.setattr(requests, "get", lambda url, **kwargs: _PdfResponse())
+    monkeypatch.setattr(bis, "PdfReader", lambda f: type("R", (), {"pages": [NoTextPage()]})())
+    fetcher = BisFetcher(output_dir=str(tmp_path))
+    url = "https://www.bis.org/review/r261019a.pdf"
+
+    # The real OCR path returns one string per page.
+    monkeypatch.setattr(bis, "convert_from_path", lambda path: ["page1", "page2"])
+    monkeypatch.setattr(fetcher, "Deskew", lambda image: image)
+    monkeypatch.setattr(fetcher, "extract_text_from_image", lambda image: f"ocr {image}")
+    assert fetcher.download_pdf(url) == ["ocr page1", "ocr page2"]
+
+    # OCR finds nothing either: a failure, so the article is retried later.
+    monkeypatch.setattr(fetcher, "extract_text_from_image", lambda image: "  ")
+    assert fetcher.download_pdf(url) is None
+    assert fetcher._parse_article_text(url) is None
+
+
+def test_direct_pdf_link_with_query_string_is_downloaded(monkeypatch, tmp_path):
+    requested = []
+
+    def get(url, **kwargs):
+        requested.append(url)
+        return _PdfResponse()
+
+    monkeypatch.setattr(requests, "get", get)
+    url = "https://www.bis.org/review/r261019a.PDF?download=1"
+    article = BisFetcher(output_dir=str(tmp_path))._parse_article_text(url)
+    assert article is not None and article["pdf_url"] == url and article["text"]
+    assert requested == [url]  # fetched once as a PDF, not parsed as HTML first
+
+
+def test_timed_out_listing_page_is_reported_not_empty(monkeypatch, caplog):
+    def stalled_get(url, **kwargs):
+        raise requests.Timeout("read timed out")
+
+    monkeypatch.setattr(requests, "get", stalled_get)
+    fetcher = BisFetcher(request_timeout=(1.0, 2.0))
+    with pytest.raises(bis.PageFetchError):
+        fetcher._parse_page_links("https://www.bis.org/cbspeeches/index.htm?cbspeeches_page=2")
+
+    pages = {"p1": [{"url": "a"}]}
+
+    def parse_page(page_url):
+        if page_url in pages:
+            return pages[page_url]
+        return fetcher._parse_page_links(page_url)
+
+    links = crawl_links(
+        "p{page}",
+        parse_page_func=parse_page,
+        next_page_func=lambda start, current, page: start.format(page=page),
+        max_num_pages=5,
+    )
+    assert [link["url"] for link in links] == ["a"]  # page 1 kept, crawl stopped at page 2
+    assert "Failed to fetch page p2" in caplog.text
+
+
+def test_missing_listing_page_ends_the_crawl_without_a_browser(monkeypatch):
+    monkeypatch.setattr(
+        requests, "get", lambda url, **kwargs: type("R", (), {"status_code": 404})()
+    )
+    # Chrome is never started for an error page, so this runs without a browser.
+    assert BisFetcher()._parse_page_links("https://www.bis.org/cbspeeches/index.htm") is None
+
+
+@pytest.mark.parametrize("status", [403, 429, 500, 503])
+def test_http_error_listing_page_is_reported_not_empty(monkeypatch, status):
+    # Review of #96: only 404 stopped the crawl; other errors were parsed as empty pages.
+    monkeypatch.setattr(requests, "get", lambda url, **kw: type("R", (), {"status_code": status})())
+    with pytest.raises(bis.PageFetchError, match=str(status)):
+        BisFetcher()._parse_page_links("https://www.bis.org/cbspeeches/index.htm")
+
+
+def test_articles_saved_blank_before_are_retried_and_replaced(tmp_path):
+    # Review of #96: rows saved with empty text by older versions were skipped forever.
+    fetcher = BisFetcher(output_dir=str(tmp_path))
+    fetcher._articles = [
+        {"url": "a", "text": "kept"},
+        {"url": "b", "text": ""},
+        {"url": "c", "text": ["", " "]},
+    ]
+    assert fetcher._done_article_urls() == ["a"]
+    fetcher.save_articles([{"url": "b", "text": "ocr"}])
+    assert fetcher._articles == [
+        {"url": "a", "text": "kept"},
+        {"url": "c", "text": ["", " "]},
+        {"url": "b", "text": "ocr"},
+    ]
+
+
+def test_article_limit_counts_fetches_not_skipped_links():
+    # Review of #96: the limit counted link positions, so done links used it up.
+    links = [{"url": f"u{i}", "title": "t"} for i in range(5)]
+    fetched = []
+
+    def parse(url):
+        fetched.append(url)
+        return {"text": "x"}
+
+    done = ["u0", "u1", "u2"]
+    articles = scrape_article_text(links, parse, article_urls=done, max_num_articles=1)
+    assert fetched == ["u3"] and [a["url"] for a in articles] == ["u3"]
