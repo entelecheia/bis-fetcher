@@ -142,8 +142,9 @@ class BisFetcher(BaseFetcher):
             # No text layer (scanned) or glyph-code garbage: fall back to OCR.
             page_texts = ["/i255", "/0", "/1", "/2"]
             if not text.strip() or any(page_text in text for page_text in page_texts):
+                # OCR returns one string per page; kept as a list, as before.
                 text = self.extract_text_from_image_pdf(pdf_path)
-            if not text or not text.strip():
+            if not "".join(text).strip():
                 logger.error("No text extracted from PDF, even with OCR: %s", url)
                 return None
             return text

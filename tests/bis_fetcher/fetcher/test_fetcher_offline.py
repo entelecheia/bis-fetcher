@@ -156,11 +156,14 @@ def test_pdf_without_text_layer_falls_back_to_ocr(monkeypatch, tmp_path):
     fetcher = BisFetcher(output_dir=str(tmp_path))
     url = "https://www.bis.org/review/r261019a.pdf"
 
-    monkeypatch.setattr(fetcher, "extract_text_from_image_pdf", lambda path: "ocr text")
-    assert fetcher.download_pdf(url) == "ocr text"
+    # The real OCR path returns one string per page.
+    monkeypatch.setattr(bis, "convert_from_path", lambda path: ["page1", "page2"])
+    monkeypatch.setattr(fetcher, "Deskew", lambda image: image)
+    monkeypatch.setattr(fetcher, "extract_text_from_image", lambda image: f"ocr {image}")
+    assert fetcher.download_pdf(url) == ["ocr page1", "ocr page2"]
 
     # OCR finds nothing either: a failure, so the article is retried later.
-    monkeypatch.setattr(fetcher, "extract_text_from_image_pdf", lambda path: "  ")
+    monkeypatch.setattr(fetcher, "extract_text_from_image", lambda image: "  ")
     assert fetcher.download_pdf(url) is None
     assert fetcher._parse_article_text(url) is None
 
