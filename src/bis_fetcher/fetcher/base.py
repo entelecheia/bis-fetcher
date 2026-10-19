@@ -104,6 +104,8 @@ class BaseFetcher(BaseModel):
                 wait_time=wait_time,
                 locator=locator,
             )
+            if driver.error is not None:
+                raise driver.error
             return Response(text=driver.text, status_code=driver.status_code)
         timeout = kwargs.pop("timeout", self.request_timeout)
         res = requests.get(url, params=params, headers=self._headers, timeout=timeout, **kwargs)
@@ -234,25 +236,40 @@ class BaseFetcher(BaseModel):
         return links
 
     def _fetch_articles(self, parse_article_func: Callable):
-        num_workers = min(self.num_workers, len(self.links))
-        article_urls = [article["url"] for article in self.articles]
+        article_urls = self._done_article_urls()
+        # Apply max_num_articles once per run, before the links are split across workers.
+        links = [
+            link
+            for link in self.links
+            if self.overwrite_existing or link["url"] not in article_urls
+        ]
+        if self.max_num_articles is not None:
+            links = links[: max(self.max_num_articles, 0)]  # a negative limit fetches nothing
+        num_workers = max(min(self.num_workers, len(links)), 1)
         fetch_articles_func = partial(
             scrape_article_text,
             parse_article_func=parse_article_func,
             article_urls=article_urls,
             overwrite_existing=self.overwrite_existing,
             article_filepath=self.article_filepath_tmp,
-            max_num_articles=self.max_num_articles,
+            max_num_articles=None,
             delay_between_requests=self.delay_between_requests,
             print_every=self.print_every,
             verbose=self.verbose,
         )
-        if articles := self._fetch_articles_mp(num_workers, fetch_articles_func):
+        if articles := self._fetch_articles_mp(num_workers, fetch_articles_func, links):
             self.save_articles(articles)
         else:
             logger.info("No more articles found")
 
+    def _done_article_urls(self) -> list[str]:
+        """URLs to skip: saved articles, except rows saved earlier with blank text (retried)."""
+        return [a["url"] for a in self.articles if not _blank_text(a)]
+
     def save_articles(self, articles: list[dict]):
+        # A re-fetched article replaces its old row (a blank retry, or overwrite_existing).
+        new_keys = {a[self.key_field] for a in articles}
+        self._articles = [a for a in self._articles if a[self.key_field] not in new_keys]
         self._articles.extend(articles)
         original_len = len(self._articles)
         self._articles = jsonl.remove_duplicates_from_list_of_dicts(
@@ -274,12 +291,13 @@ class BaseFetcher(BaseModel):
         self,
         num_workers: int,
         batch_func: Callable,
+        links: list[dict],
     ) -> list[dict]:
         articles = []
-        if len(self.links) < 1:
+        if len(links) < 1:
             return articles
-        batch_size = len(self.links) // num_workers
-        batches = [self.links[i : i + batch_size] for i in range(0, len(self.links), batch_size)]
+        batch_size = len(links) // num_workers
+        batches = [links[i : i + batch_size] for i in range(0, len(links), batch_size)]
         with mp.Pool(num_workers) as pool:
             results = pool.map(batch_func, batches)
         for result in results:
@@ -320,6 +338,18 @@ class BaseFetcher(BaseModel):
         raise NotImplementedError("Parsing article text is not implemented in base class")
 
 
+def _blank_text(article: dict) -> bool:
+    """True for a row whose ``text`` exists but is empty (OCR output is a list of pages)."""
+    if "text" not in article:
+        return False
+    text = article["text"]
+    return not "".join(text if isinstance(text, list) else [text or ""]).strip()
+
+
+class PageFetchError(Exception):
+    """A listing page could not be fetched (as opposed to being empty)."""
+
+
 def crawl_links(
     start_url: str,
     parse_page_func: Callable,
@@ -355,7 +385,12 @@ def crawl_links(
         # get next page url
         page_url = next_page_func(start_url, page_url, page)
         # Parse page
-        page_links = parse_page_func(page_url)
+        try:
+            page_links = parse_page_func(page_url)
+        except PageFetchError as e:
+            # Keep the links fetched so far; the failed page is reported, not treated as empty.
+            logger.error("Failed to fetch page %s, stopping: %s", page_url, e.__cause__ or e)
+            break
 
         # Check if page_links is None
         if page_links is None:
@@ -419,16 +454,18 @@ def scrape_article_text(
     """
     articles = []
     article_urls = article_urls or []
+    attempts = 0  # the limit counts fetches, so links already done do not use it up
     for i, link in enumerate(links):
-        if max_num_articles is not None and i >= max_num_articles:
-            logger.info("Reached max number of articles, stopping...")
-            break
-
         url = link["url"]
         title = link["title"]
         if url in article_urls and not overwrite_existing:
             logger.info("Article [%s](%s) already exists, skipping...", title, url)
             continue
+
+        if max_num_articles is not None and attempts >= max_num_articles:
+            logger.info("Reached max number of articles, stopping...")
+            break
+        attempts += 1
 
         # Parse article
         _article = parse_article_func(url)
