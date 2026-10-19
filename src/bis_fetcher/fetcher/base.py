@@ -445,16 +445,18 @@ def scrape_article_text(
     """
     articles = []
     article_urls = article_urls or []
+    attempts = 0  # the limit counts fetches, so links already done do not use it up
     for i, link in enumerate(links):
-        if max_num_articles is not None and i >= max_num_articles:
-            logger.info("Reached max number of articles, stopping...")
-            break
-
         url = link["url"]
         title = link["title"]
         if url in article_urls and not overwrite_existing:
             logger.info("Article [%s](%s) already exists, skipping...", title, url)
             continue
+
+        if max_num_articles is not None and attempts >= max_num_articles:
+            logger.info("Reached max number of articles, stopping...")
+            break
+        attempts += 1
 
         # Parse article
         _article = parse_article_func(url)

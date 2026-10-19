@@ -239,3 +239,17 @@ def test_articles_saved_blank_before_are_retried_and_replaced(tmp_path):
         {"url": "c", "text": ["", " "]},
         {"url": "b", "text": "ocr"},
     ]
+
+
+def test_article_limit_counts_fetches_not_skipped_links():
+    # Review of #96: the limit counted link positions, so done links used it up.
+    links = [{"url": f"u{i}", "title": "t"} for i in range(5)]
+    fetched = []
+
+    def parse(url):
+        fetched.append(url)
+        return {"text": "x"}
+
+    done = ["u0", "u1", "u2"]
+    articles = scrape_article_text(links, parse, article_urls=done, max_num_articles=1)
+    assert fetched == ["u3"] and [a["url"] for a in articles] == ["u3"]
