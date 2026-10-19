@@ -1,5 +1,7 @@
 import logging
 from io import BytesIO
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlparse
 
 import cv2
 import numpy as np
@@ -98,19 +100,17 @@ class BisFetcher(BaseFetcher):
         """Parse the article text from the given divs."""
         try:
             if url.endswith(".pdf"):
-                text = self.download_pdf()
-                return {
-                    "pdf_url": url,
-                    "text": text,
-                }
-
-            response = self.request(url)
-            soup = BeautifulSoup(response.text, "html.parser")
-            pdf_div = soup.find("div", class_="pdftxt")
-            pdf = pdf_div.find("a", class_="pdftitle_link")["href"]
-            pdf_url = self.base_url + pdf
+                pdf_url = url
+            else:
+                response = self.request(url)
+                soup = BeautifulSoup(response.text, "html.parser")
+                pdf_div = soup.find("div", class_="pdftxt")
+                pdf = pdf_div.find("a", class_="pdftitle_link")["href"]
+                pdf_url = self.base_url + pdf
             text = self.download_pdf(pdf_url)
-
+            if text is None:
+                # Download failed: save nothing so the next run retries this article.
+                return None
             return {"pdf_url": pdf_url, "text": text}
 
         except Exception as e:
@@ -121,11 +121,16 @@ class BisFetcher(BaseFetcher):
     def download_pdf(self, url: str):
 
         try:
-            response = requests.get(url, allow_redirects=True, stream=True)  # noqa: S113
+            response = requests.get(
+                url, allow_redirects=True, stream=True, timeout=self.request_timeout
+            )
             response.raise_for_status()
-            filename = url.split("/")[-1]
-            with open(f"workspace/{filename}", "wb") as f:
-                f.write(response.content)
+            filename = PurePosixPath(urlparse(url).path).name
+            if filename in ("", ".", "..") or "\\" in filename:
+                raise ValueError(f"Unsafe PDF filename in URL: {url}")
+            pdf_path = Path(self.output_dir) / "pdfs" / filename
+            pdf_path.parent.mkdir(parents=True, exist_ok=True)
+            pdf_path.write_bytes(response.content)
 
             pdf_reader = PdfReader(BytesIO(response.content))
             text = ""
@@ -134,7 +139,7 @@ class BisFetcher(BaseFetcher):
 
             page_texts = ["/i255", "/0", "/1", "/2"]
             if any(page_text in text for page_text in page_texts):
-                text = self.extract_text_from_image_pdf(filename)
+                text = self.extract_text_from_image_pdf(pdf_path)
             else:
                 return text
             return text
@@ -144,10 +149,9 @@ class BisFetcher(BaseFetcher):
             logger.error(e)
             return None
 
-    def extract_text_from_image_pdf(self, pdf_filename):
+    def extract_text_from_image_pdf(self, pdf_path):
 
-        pdf_file = f"workspace/{pdf_filename}"
-        pages = convert_from_path(pdf_file)
+        pages = convert_from_path(pdf_path)
         extracted_text = []
 
         for page in pages:

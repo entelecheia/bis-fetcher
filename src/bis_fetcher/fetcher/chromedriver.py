@@ -6,6 +6,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from . import REQUEST_TIMEOUT
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +60,7 @@ class ChromeWebDriver:
         disable_dev_shm_usage: bool = True,
         autoclose: bool = True,
         wait_time: int = 10,
+        request_timeout: tuple[float, float] = REQUEST_TIMEOUT,
     ):
         """
         Initializes a ChromeWebDriver instance.
@@ -69,6 +72,7 @@ class ChromeWebDriver:
             disable_dev_shm_usage (bool): Whether to disable the /dev/shm usage. Defaults to True.
             autoclose (bool): Whether to automatically close the ChromeWebDriver instance. Defaults to True.
             wait_time (int): The maximum time to wait for the page to load, in seconds. Defaults to 1.
+            request_timeout (tuple[float, float]): (connect, read) timeout for the status request.
         """
         self.url = url  # URL to fetch
         self.options = Options()
@@ -80,6 +84,7 @@ class ChromeWebDriver:
             self.options.add_argument("--disable-dev-shm-usage")
         self.autoclose = autoclose
         self.wait_time = wait_time
+        self.request_timeout = request_timeout
 
         self._driver = None
         self.text = ""
@@ -140,7 +145,7 @@ class ChromeWebDriver:
         wait_time: int = 10,
         locator: tuple[str, str] | None = None,
     ):
-        self.status_code = requests.get(url).status_code  # noqa: S113
+        self.status_code = requests.get(url, timeout=self.request_timeout).status_code
         self.driver.get(url)  # get the requested URL
         self.driver.refresh()
         if wait_time > 0 and locator is not None:

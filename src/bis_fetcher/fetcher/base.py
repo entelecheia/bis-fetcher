@@ -11,6 +11,7 @@ import requests
 from pydantic import BaseModel, ConfigDict
 
 from .. import jsonl
+from . import REQUEST_TIMEOUT
 from .chromedriver import ChromeWebDriver
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class BaseFetcher(BaseModel):
     overwrite_existing: bool = False
     page_placeholder: str = "{page}"
     print_every: int = 10
+    request_timeout: tuple[float, float] = REQUEST_TIMEOUT
     search_keywords: list[str] = []
     search_url: str = ""
     start_page: int | None = 1
@@ -97,13 +99,14 @@ class BaseFetcher(BaseModel):
             Response object containing response text and status code
         """
         if use_selenium:
-            driver = ChromeWebDriver().get(
+            driver = ChromeWebDriver(request_timeout=self.request_timeout).get(
                 url,
                 wait_time=wait_time,
                 locator=locator,
             )
             return Response(text=driver.text, status_code=driver.status_code)
-        res = requests.get(url, params=params, headers=self._headers, **kwargs)  # noqa: S113
+        timeout = kwargs.pop("timeout", self.request_timeout)
+        res = requests.get(url, params=params, headers=self._headers, timeout=timeout, **kwargs)
         return Response(text=res.text, status_code=res.status_code)
 
     @property
@@ -376,7 +379,7 @@ def crawl_links(
         page += 1
         page_cnt += 1
 
-        if max_num_pages and page_cnt > max_num_pages:
+        if max_num_pages and page_cnt >= max_num_pages:
             logger.info("Reached max number of pages, stopping...")
             break
         # Delay between requests
