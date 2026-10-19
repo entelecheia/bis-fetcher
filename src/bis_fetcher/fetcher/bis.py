@@ -58,11 +58,14 @@ class BisFetcher(BaseFetcher):
         except Exception as e:
             # A failed fetch is not an empty page: let the crawl report it.
             raise PageFetchError(page_url) from e
+        # Check if page exists (status code 200) or not (status code 404)
+        if response.status_code == 404:
+            logger.info("Page [%s] does not exist, stopping...", page_url)
+            return None
+        if response.status_code >= 400:
+            # 403, 429, 5xx: a failed fetch, not an empty page.
+            raise PageFetchError(f"HTTP {response.status_code}")
         try:
-            # Check if page exists (status code 200) or not (status code 404)
-            if response.status_code == 404:
-                logger.info("Page [%s] does not exist, stopping...", page_url)
-                return None
             soup = BeautifulSoup(response.text, "html.parser")
 
             # Find the section with class 'section-category'

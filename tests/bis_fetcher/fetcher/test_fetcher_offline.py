@@ -214,3 +214,11 @@ def test_missing_listing_page_ends_the_crawl_without_a_browser(monkeypatch):
     )
     # Chrome is never started for an error page, so this runs without a browser.
     assert BisFetcher()._parse_page_links("https://www.bis.org/cbspeeches/index.htm") is None
+
+
+@pytest.mark.parametrize("status", [403, 429, 500, 503])
+def test_http_error_listing_page_is_reported_not_empty(monkeypatch, status):
+    # Review of #96: only 404 stopped the crawl; other errors were parsed as empty pages.
+    monkeypatch.setattr(requests, "get", lambda url, **kw: type("R", (), {"status_code": status})())
+    with pytest.raises(bis.PageFetchError, match=str(status)):
+        BisFetcher()._parse_page_links("https://www.bis.org/cbspeeches/index.htm")
