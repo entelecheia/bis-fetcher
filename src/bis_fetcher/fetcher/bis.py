@@ -128,7 +128,7 @@ class BisFetcher(BaseFetcher):
             filename = PurePosixPath(urlparse(url).path).name
             if filename in ("", ".", "..") or "\\" in filename:
                 raise ValueError(f"Unsafe PDF filename in URL: {url}")
-            pdf_path = Path(self.output_dir) / filename
+            pdf_path = Path(self.output_dir) / "pdfs" / filename
             pdf_path.parent.mkdir(parents=True, exist_ok=True)
             pdf_path.write_bytes(response.content)
 

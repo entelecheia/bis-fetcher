@@ -72,7 +72,7 @@ def test_pdf_is_saved_under_output_dir(monkeypatch, tmp_path):
     out = tmp_path / "out" / "bis"
     fetcher = BisFetcher(output_dir=str(out))
     assert fetcher.download_pdf("https://www.bis.org/review/r261019a.pdf?x=1")
-    assert (out / "r261019a.pdf").read_bytes() == pdf
+    assert (out / "pdfs" / "r261019a.pdf").read_bytes() == pdf
     assert fetcher.download_pdf("https://www.bis.org/review/..") is None
     assert [p.name for p in tmp_path.rglob("*") if p.is_file()] == ["r261019a.pdf"]
 
@@ -121,3 +121,17 @@ def test_selenium_status_request_uses_fetcher_timeout(monkeypatch):
     )
     assert response.status_code == 0
     assert timeouts == [(1.0, 2.0)]
+
+
+def test_pdf_named_like_a_record_file_does_not_overwrite_it(monkeypatch, tmp_path):
+    class PdfResponse:
+        content = (FIXTURES / "speech.pdf").read_bytes()
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(requests, "get", lambda url, **kwargs: PdfResponse())
+    records = tmp_path / "articles.jsonl"
+    records.write_text('{"url": "https://www.bis.org/review/r1.htm"}\n')
+    BisFetcher(output_dir=str(tmp_path)).download_pdf("https://www.bis.org/x/articles.jsonl")
+    assert records.read_text() == '{"url": "https://www.bis.org/review/r1.htm"}\n'
