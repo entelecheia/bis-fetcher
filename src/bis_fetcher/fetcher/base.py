@@ -379,7 +379,7 @@ def crawl_links(
         page += 1
         page_cnt += 1
 
-        if max_num_pages and page_cnt > max_num_pages:
+        if max_num_pages and page_cnt >= max_num_pages:
             logger.info("Reached max number of pages, stopping...")
             break
         # Delay between requests
