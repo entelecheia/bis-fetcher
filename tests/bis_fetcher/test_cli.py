@@ -1,11 +1,11 @@
 """
 test cli module
 """
+
 import subprocess
-from typing import List, Tuple
 
 
-def capture(command: List[str]) -> Tuple[bytes, bytes, int]:
+def capture(command: list[str]) -> tuple[bytes, bytes, int]:
     proc = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -18,5 +18,5 @@ def capture(command: List[str]) -> Tuple[bytes, bytes, int]:
 def test_cli() -> None:
     """Test cli module"""
     command = ["bis_fetcher"]
-    out, err, exitcode = capture(command)
+    _out, _err, exitcode = capture(command)
     assert exitcode == 0

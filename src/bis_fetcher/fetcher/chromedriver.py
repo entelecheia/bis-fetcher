@@ -1,5 +1,4 @@
 import logging
-from typing import Optional, Tuple
 
 import requests
 from selenium import webdriver
@@ -49,11 +48,11 @@ class ChromeWebDriver:
     url: str
     wait_time: int = 10
 
-    _driver: Optional[webdriver.Chrome] = None
+    _driver: webdriver.Chrome | None = None
 
     def __init__(
         self,
-        url: Optional[str] = None,
+        url: str | None = None,
         headless: bool = True,
         no_sandbox: bool = True,
         disable_dev_shm_usage: bool = True,
@@ -104,8 +103,8 @@ class ChromeWebDriver:
     def get(
         self,
         url: str,
-        wait_time: Optional[int] = None,
-        locator: Optional[Tuple[str, str]] = None,
+        wait_time: int | None = None,
+        locator: tuple[str, str] | None = None,
     ) -> "ChromeWebDriver":
         """
         Fetches the HTTP response for the given URL using the ChromeWebDriver.
@@ -139,15 +138,13 @@ class ChromeWebDriver:
         self,
         url: str,
         wait_time: int = 10,
-        locator: Optional[Tuple[str, str]] = None,
+        locator: tuple[str, str] | None = None,
     ):
-        self.status_code = requests.get(url).status_code  # get the HTTP status code
+        self.status_code = requests.get(url).status_code  # noqa: S113
         self.driver.get(url)  # get the requested URL
         self.driver.refresh()
         if wait_time > 0 and locator is not None:
-            WebDriverWait(self.driver, wait_time).until(
-                EC.presence_of_element_located(locator)
-            )
+            WebDriverWait(self.driver, wait_time).until(EC.presence_of_element_located(locator))
         self.title = self.driver.title
         self.text = self.driver.page_source
         if self.autoclose:

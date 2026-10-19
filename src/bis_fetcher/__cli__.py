@@ -1,7 +1,6 @@
 """Command line interface for bis_fetcher"""
 
 import argparse
-from typing import List, Optional
 
 from ._version import __version__
 
@@ -11,7 +10,7 @@ DESCRIPTION = (
 )
 
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """Main function for the CLI"""
     parser = argparse.ArgumentParser(prog="bis_fetcher", description=DESCRIPTION)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
