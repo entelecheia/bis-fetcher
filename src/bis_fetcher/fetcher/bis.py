@@ -1,16 +1,12 @@
 import logging
-import fitz
-from PIL import Image
 import pytesseract
-from datetime import datetime
 from typing import List, Optional, Tuple
-from PyPDF2 import PdfReader, PdfWriter
+from PyPDF2 import PdfReader
 from pdf2image import convert_from_path
 from bs4 import BeautifulSoup
 from io import BytesIO
 import requests
 from .base import BaseFetcher, By
-import pdfplumber
 import numpy as np
 import cv2
 import pandas as pd

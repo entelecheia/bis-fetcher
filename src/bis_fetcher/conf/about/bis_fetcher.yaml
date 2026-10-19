@@ -1,5 +1,0 @@
-name: "BIS Fetcher"
-authors: "Young Joon Lee <entelecheia@hotmail.com>"
-description: "A Python library that scrapes the BIS website to download and extract text from central bank speeches."
-homepage: "https://entelecheia.github.io/bis-fetcher"
-license: "MIT"

@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
 import requests
-from hyfi.composer import BaseModel
-from hyfi.main import HyFI
+from pydantic import BaseModel, ConfigDict
 
+from .. import jsonl
 from .chromedriver import ChromeWebDriver
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,8 @@ class BaseFetcher(BaseModel):
     """
     Base Fetcher
     """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     _config_name_: str = "base"
     _config_group_: str = "/fetcher"
@@ -156,12 +158,12 @@ class BaseFetcher(BaseModel):
 
     def _load_links(self) -> List[dict]:
         if Path(self.link_filepath).exists():
-            self._links = HyFI.load_jsonl(self.link_filepath)
+            self._links = jsonl.load_jsonl(self.link_filepath)
         return self._links
 
     def _load_articles(self) -> List[dict]:
         if Path(self.article_filepath).exists():
-            self._articles = HyFI.load_jsonl(self.article_filepath)
+            self._articles = jsonl.load_jsonl(self.article_filepath)
         return self._articles
 
     def fetch_links(self):
@@ -208,7 +210,7 @@ class BaseFetcher(BaseModel):
     def save_links(self, links: List[dict]):
         self._links.extend(links)
         original_len = len(self._links)
-        self._links = HyFI.remove_duplicates_from_list_of_dicts(
+        self._links = jsonl.remove_duplicates_from_list_of_dicts(
             self._links, key=self.key_field
         )
         logger.info(
@@ -216,7 +218,7 @@ class BaseFetcher(BaseModel):
             original_len - len(self._links),
             original_len,
         )
-        HyFI.save_jsonl(self._links, self.link_filepath)
+        jsonl.save_jsonl(self._links, self.link_filepath)
         logger.info("Saved %s links to %s", len(self._links), self.link_filepath)
 
     def _fetch_links_mp(
@@ -253,7 +255,7 @@ class BaseFetcher(BaseModel):
     def save_articles(self, articles: List[dict]):
         self._articles.extend(articles)
         original_len = len(self._articles)
-        self._articles = HyFI.remove_duplicates_from_list_of_dicts(
+        self._articles = jsonl.remove_duplicates_from_list_of_dicts(
             self._articles, key=self.key_field
         )
         logger.info(
@@ -261,7 +263,7 @@ class BaseFetcher(BaseModel):
             original_len - len(self._articles),
             original_len,
         )
-        HyFI.save_jsonl(self._articles, self.article_filepath)
+        jsonl.save_jsonl(self._articles, self.article_filepath)
         logger.info(
             "Saved %s articles to %s",
             len(self._articles),
@@ -372,7 +374,7 @@ def crawl_links(
                 links.append(link)
                 link_urls.append(link["url"])
                 if link_filepath:
-                    HyFI.append_to_jsonl(link, link_filepath)
+                    jsonl.append_to_jsonl(link, link_filepath)
             else:
                 logger.info(
                     "Link %s already exists, skipping...",
@@ -447,7 +449,7 @@ def scrape_article_text(
         articles.append(article)
         article_urls.append(url)
         if article_filepath:
-            HyFI.append_to_jsonl(article, article_filepath)
+            jsonl.append_to_jsonl(article, article_filepath)
         if (verbose and (i + 1) % print_every == 0) or delay_between_requests > 0:
             logger.info("Article [%s](%s) scraped", title, url)
 
