@@ -121,7 +121,9 @@ class BisFetcher(BaseFetcher):
     def download_pdf(self, url: str):
 
         try:
-            response = requests.get(url, allow_redirects=True, stream=True)  # noqa: S113
+            response = requests.get(
+                url, allow_redirects=True, stream=True, timeout=self.request_timeout
+            )
             response.raise_for_status()
             filename = url.split("/")[-1]
             with open(f"workspace/{filename}", "wb") as f:

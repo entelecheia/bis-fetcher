@@ -6,6 +6,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from . import REQUEST_TIMEOUT
+
 logger = logging.getLogger(__name__)
 
 
@@ -140,7 +142,7 @@ class ChromeWebDriver:
         wait_time: int = 10,
         locator: tuple[str, str] | None = None,
     ):
-        self.status_code = requests.get(url).status_code  # noqa: S113
+        self.status_code = requests.get(url, timeout=REQUEST_TIMEOUT).status_code
         self.driver.get(url)  # get the requested URL
         self.driver.refresh()
         if wait_time > 0 and locator is not None:
