@@ -222,3 +222,20 @@ def test_http_error_listing_page_is_reported_not_empty(monkeypatch, status):
     monkeypatch.setattr(requests, "get", lambda url, **kw: type("R", (), {"status_code": status})())
     with pytest.raises(bis.PageFetchError, match=str(status)):
         BisFetcher()._parse_page_links("https://www.bis.org/cbspeeches/index.htm")
+
+
+def test_articles_saved_blank_before_are_retried_and_replaced(tmp_path):
+    # Review of #96: rows saved with empty text by older versions were skipped forever.
+    fetcher = BisFetcher(output_dir=str(tmp_path))
+    fetcher._articles = [
+        {"url": "a", "text": "kept"},
+        {"url": "b", "text": ""},
+        {"url": "c", "text": ["", " "]},
+    ]
+    assert fetcher._done_article_urls() == ["a"]
+    fetcher.save_articles([{"url": "b", "text": "ocr"}])
+    assert fetcher._articles == [
+        {"url": "a", "text": "kept"},
+        {"url": "c", "text": ["", " "]},
+        {"url": "b", "text": "ocr"},
+    ]

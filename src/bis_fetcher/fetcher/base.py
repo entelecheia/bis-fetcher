@@ -237,7 +237,7 @@ class BaseFetcher(BaseModel):
 
     def _fetch_articles(self, parse_article_func: Callable):
         num_workers = min(self.num_workers, len(self.links))
-        article_urls = [article["url"] for article in self.articles]
+        article_urls = self._done_article_urls()
         fetch_articles_func = partial(
             scrape_article_text,
             parse_article_func=parse_article_func,
@@ -254,7 +254,14 @@ class BaseFetcher(BaseModel):
         else:
             logger.info("No more articles found")
 
+    def _done_article_urls(self) -> list[str]:
+        """URLs to skip: saved articles, except rows saved earlier with blank text (retried)."""
+        return [a["url"] for a in self.articles if not _blank_text(a)]
+
     def save_articles(self, articles: list[dict]):
+        # A re-fetched article replaces its old row (a blank retry, or overwrite_existing).
+        new_keys = {a[self.key_field] for a in articles}
+        self._articles = [a for a in self._articles if a[self.key_field] not in new_keys]
         self._articles.extend(articles)
         original_len = len(self._articles)
         self._articles = jsonl.remove_duplicates_from_list_of_dicts(
@@ -320,6 +327,14 @@ class BaseFetcher(BaseModel):
     def _parse_article_text(self, url: str) -> dict:
         # TODO: Scrape the article page and extract the text
         raise NotImplementedError("Parsing article text is not implemented in base class")
+
+
+def _blank_text(article: dict) -> bool:
+    """True for a row whose ``text`` exists but is empty (OCR output is a list of pages)."""
+    if "text" not in article:
+        return False
+    text = article["text"]
+    return not "".join(text if isinstance(text, list) else [text or ""]).strip()
 
 
 class PageFetchError(Exception):
